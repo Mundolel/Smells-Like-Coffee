@@ -179,3 +179,147 @@ Image icon = new Image(MyClass.class.getResourceAsStream("test.png"));
 ```
 
 y así tu icono siempre viaja dentro del JAR, sin depender de rutas fijas en disco.
+
+---
+
+Uno de los detalles más importantes —y a veces más confusos— de trabajar con **recursos en Java**. 
+
+---
+
+## ✅ Diferencias entre:
+
+```java
+Image icon  = new Image(getClass().getResource("/test.png").toExternalForm());
+Image icon2 = new Image(getClass().getResource("test.png").toExternalForm());
+```
+
+### 📌 Diferencia clave: **la barra `/` al inicio del path**
+
+---
+
+## 🔍 ¿Qué hace `getClass().getResource(...)`?
+
+Este método busca un **recurso** en el **classpath** de la aplicación.
+Pero **cómo lo busca depende de si la ruta empieza con `/` o no**.
+
+---
+
+## 1. `getClass().getResource("/test.png")` → **Ruta absoluta**
+
+* Significado: **Busca el recurso `test.png` desde la raíz del classpath**.
+* Es equivalente a:
+
+  ```
+  classLoader.getResource("test.png")
+  ```
+* Es decir, **dentro de `src/main/resources/test.png`** (o en el root del JAR).
+
+📁 Se espera que `test.png` esté en:
+
+```
+src/main/resources/test.png
+```
+
+Y cuando se compila:
+
+```
+target/classes/test.png
+```
+
+---
+
+## 2. `getClass().getResource("test.png")` → **Ruta relativa al paquete de la clase**
+
+* Significado: **Busca `test.png` dentro del mismo paquete donde está la clase desde la cual se llama `getClass()`**.
+* Por ejemplo, si tu clase es `bro.brocode.HelloApplication`, eso significa que busca:
+
+```
+src/main/resources/bro/brocode/test.png
+```
+
+Porque `bro/brocode/` es el path equivalente al paquete `bro.brocode`.
+
+🧠 Nota: `test.png` se trata como si fuera relativo al "directorio actual del código".
+
+---
+
+## 🔄 ¿Qué pasa si usas mal la ruta?
+
+### ❌ Si pones:
+
+```java
+getClass().getResource("/test.png");
+```
+
+Y `test.png` está realmente en `bro/brocode/test.png`, **no lo encontrará**.
+
+### ✅ Pero si usas:
+
+```java
+getClass().getResource("test.png");
+```
+
+**sí lo encontrará**, porque la clase `HelloApplication` está en `bro/brocode/`, y por tanto la búsqueda es relativa a ese paquete.
+
+---
+
+## 📦 Ejemplo real con estructura
+
+Supongamos esta estructura:
+
+```
+src/main/java/bro/brocode/HelloApplication.java
+src/main/resources/bro/brocode/test.png
+```
+
+Esto se compila así en `target/classes/`:
+
+```
+target/classes/bro/brocode/HelloApplication.class
+target/classes/bro/brocode/test.png
+```
+
+Entonces:
+
+| Código                                            | Resultado                                        |
+| ------------------------------------------------- | ------------------------------------------------ |
+| `getClass().getResource("/test.png")`             | ❌ No lo encuentra (porque no está en la raíz)    |
+| `getClass().getResource("test.png")`              | ✅ Lo encuentra (porque está en el mismo paquete) |
+| `getClass().getResource("/bro/brocode/test.png")` | ✅ También funciona (ruta absoluta desde raíz)    |
+
+---
+
+## 🧠 Reglas para recordar
+
+| Caso de uso                                              | Ruta que debes usar                    |
+| -------------------------------------------------------- | -------------------------------------- |
+| El recurso está en la **misma carpeta** que la clase     | `"test.png"` (relativo)                |
+| El recurso está en la **raíz del classpath**             | `"/test.png"` (absoluto)               |
+| El recurso está en otra carpeta específica del classpath | `"/ruta/desde/la/raiz/al/archivo.ext"` |
+
+---
+
+## 🎯 Conclusión final
+
+```java
+Image icon  = new Image(getClass().getResource("/test.png").toExternalForm());
+```
+
+🔎 **Busca desde la raíz del classpath**. Usa esto si `test.png` está directamente en `src/main/resources/`.
+
+```java
+Image icon2 = new Image(getClass().getResource("test.png").toExternalForm());
+```
+
+🔎 **Busca dentro del paquete donde está la clase** (`bro/brocode/` en este caso). Usa esto si el recurso está junto al `.java`.
+
+---
+
+¿Quieres una analogía?
+Piensa en la diferencia entre estas dos rutas en un sistema operativo:
+
+* `/test.png` → ruta absoluta desde la raíz del sistema
+* `test.png` → ruta relativa al "directorio actual"
+
+En Java, ese “directorio actual” es **el paquete donde está tu clase**.
+
